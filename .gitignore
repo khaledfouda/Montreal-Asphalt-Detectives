@@ -8,3 +8,4 @@ install_manifest.txt
 compile_commands.json
 CTestTestfile.cmake
 data/counts_cars_pedast_cyclists_2017_2019.csv
+*checkpoint*
