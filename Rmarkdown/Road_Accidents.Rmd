@@ -1,0 +1,222 @@
+---
+title: "Road Accidents"
+subtitle: "Univariate Analysis"
+output: html_document
+date: '2022-05-05'
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, include=TRUE)
+setwd("E:/Montreal-Asphalt-Detectives/Rmarkdown")
+library(tidyverse)
+library(ggpubr)
+source('./helpers.R')
+accidents <- read.csv('../data/collisions_routieres_road_accidents.csv',
+                        header = TRUE)
+
+```
+
+```{r fig.width=8, fig.height=4, warning=FALSE}
+
+grid.arrange(valueBox(nrow(accidents), "Entries"),
+             valueBox(ncol(accidents), "Features"),nrow= 1)
+
+
+```  
+
+# Feature definitions and summaries
+
+## 1. Time variables
+
+**AN**: Year,  
+**DT_ACCDN**: Date,  
+**HR_ACCDN**: Hour,  
+**JR_SEMN_ACCDN**: Day.  
+  
+```{r fig.width=12, fig.height=12}
+
+
+accidents %>% ggplot(aes(x=factor(AN))) +
+  geom_bar() +
+  stat_count( geom="text", aes(label=..count..) ,vjust = -1)+ 
+  labs(title="Accidents Per Year", x="Year", y="Number of Accidents") ->an
+ 
+
+accidents %>%
+  ggplot(aes(x=factor(JR_SEMN_ACCDN,
+                      levels=c("LU","MA","ME","JE","VE","SA","DI"),
+                      labels = c("Monday", "Tuesday", "Wednesday", "Thursday",
+                                 "Friday", "Saturday", "Sunday")))) +
+  geom_bar() +
+  stat_count( geom="text", aes(label=..count..) ,vjust = -1)+ 
+  labs(title="Accidents Per Day", x="Day of Week", y="Number of Accidents") ->jr
+
+
+accidents$HEURE_ACCDN %>%
+  lapply(function(x) gsub("Non précisé", NA, strsplit(x,':')[[1]][1])) %>%
+  as.numeric() -> accidents$HR_ACCDN
+
+hr_labels = c("12AM", sprintf("%dAM", 1:11), "12PM", sprintf("%dPM", 1:11))
+accidents %>%
+  drop_na(HR_ACCDN) %>%
+  ggplot(aes(x=factor(HR_ACCDN,
+                                  levels=seq(0,23,1),
+                                  labels= hr_labels))) +
+  geom_bar() +
+  scale_x_discrete(breaks=hr_labels[seq(1,25,3)])+
+  labs(title="Accidents Per Hour", x="Hour", y="Number of Accidents")  ->hr
+
+
+
+
+
+
+ggarrange(an, jr, hr,
+          ncol = 2, nrow = 2)
+           
+```  
+
+The percentage of null values for the hour of accidents is 
+`r round(table(accidents$HEURE_ACCDN)[['Non précisé']] / nrow(accidents) * 100,2)`
+%.  
+
+Unless mentioned, the variables do not have null values.  
+
+----   
+   
+## 2. Losses and Damagaes  (27 variables)  
+
+We will divide the 27 variables into 3 groups.   
+**The first** group contains one variable: "Gravité: Severity". It's a categorical
+variable of 5 categories:  
+
+* Deadly: at least one victim died during the 30 days following the accident.  
+* Severe injuries: At least one victim was severely injured.  
+* Light injuries: One or more victims were lightly injured.  
+* Material damage only: Material damage with value exceeding $2000.  
+* Inferior material damage: Material damage with value equal to or below $2000.  
+   
+*Whenever deaths are counted, deaths happening during the 30 days following
+the accident are included*
+
+```{r fig.width=12, fig.height=4, warning=FALSE}
+
+accidents %>%
+  count(grav=factor(GRAVITE,
+         levels = c("Dommages matériels inférieurs au seuil de rapportage",
+                    "Dommages matériels seulement", "Grave", "Léger", "Mortel"),
+         labels = c('Material dammages only <= $2k', 'Material dammages only > $2k',
+                    'Severe injuries', 'Light injuries', 
+                    "Deadly"))) %>%
+  mutate(pct = prop.table(n)) %>%
+  ggplot(aes(x=reorder(grav,desc(pct)), y= n, label = scales::percent(pct))) +
+  #geom_bar() +
+  coord_flip() +
+  geom_col(position='dodge' ) +
+  theme(axis.text.y = element_text(face='bold', angle = 0, size=10)) +
+  geom_text(position = position_dodge(width = .9),    # move to center of bars
+            vjust = 0.5,
+            hjust = -1,
+            size = 6)  +
+  labs(title="The Severity of Accidents", y="Count", x="Severity") +
+  scale_y_continuous(expand = expansion(add=c(0,20000)))
+  
+```
+      
+**The second** group breaks down the injuries. We have the following groups:
+
+* NB_VICTIMES_TOTAL: Total number of victims
+    + NB_MORTS: Number of dead victims.
+    + NB_BLESSES_GRAVES: Number of victims severely injured.
+    + NB_BLESSES_LEGERS: Number of victims lightly injured.
+* NB_VICTIMES_PIETON: Total number of pedestrian victims.
+    + NB_DECES_PIETON: Number of dead pedestrians.
+    + NB_BLESSES_PIETON: Number of injured pedestrians (severe or light).
+* NB_VICTIMES_MOTO: Total number of motorcyclist victims.
+    + NB_DECES_MOTO: Number of dead motorcyclists.
+    + NB_BLESSES_MOTO: Number of injured motorcyclists.
+* NB_VICTIMES_VELO: Number of cyclist victims.
+    + NB_DECES_VELO: Number of dead cyclists.
+    + NB_BLESSES_VELO: Number of injured cyclists
+
+```{r fig.width=12, fig.height=8, warning=FALSE}
+
+
+accidents %>% 
+  select(NB_VICTIMES_TOTAL, NB_MORTS, NB_BLESSES_GRAVES, NB_BLESSES_LEGERS,
+         NB_VICTIMES_PIETON, NB_DECES_PIETON, NB_BLESSES_PIETON,
+         NB_VICTIMES_MOTO, NB_DECES_MOTO, NB_BLESSES_MOTO,
+         NB_VICTIMES_VELO, NB_DECES_VELO, NB_BLESSES_VELO) %>%
+  
+  colSums() %>%  
+  as.data.frame  %>% 
+  rename( COUNT = ".") %>%
+  mutate(FEATURE = c("Total", "Deaths", "Injuries", "Injuries",
+                     rep(c("Total", "Deaths", "Injuries"),3))) %>%
+  mutate(CATEGORY = c(replicate(4,"Total"),
+                      replicate(3, "Pedestrians"),
+                      replicate(3, "Motorcyclists"),
+                      replicate(3, "Cyclists"))) %>%
+  filter( CATEGORY != 'Total') %>%
+  ggplot(aes(x=factor(FEATURE,
+                      levels = c("Total","Deaths", "Severe",
+                                 "Light", "Injuries")),
+                      y=COUNT, fill=CATEGORY)) +
+  geom_bar(stat = 'identity',position = 'stack')+  
+  facet_wrap(. ~ factor(FEATURE,levels=c("Total", "Injuries", "Deaths")),
+             scales = "free",nrow = 1) +
+  geom_text(aes(label=comma(COUNT)), position=position_stack(vjust = .3))+
+  geom_text(aes(label=CATEGORY), position=position_stack(vjust = .7)) +
+  theme(legend.position = "none", axis.text.x = element_blank(),
+        axis.ticks.x = element_blank()) +
+labs(title="Victims Breakdown", y="", x="") 
+
+
+
+accidents %>% 
+  select(NB_VICTIMES_TOTAL, NB_MORTS, NB_BLESSES_GRAVES, NB_BLESSES_LEGERS,
+         NB_VICTIMES_PIETON, NB_DECES_PIETON, NB_BLESSES_PIETON,
+         NB_VICTIMES_MOTO, NB_DECES_MOTO, NB_BLESSES_MOTO,
+         NB_VICTIMES_VELO, NB_DECES_VELO, NB_BLESSES_VELO) %>%
+  
+  colSums() %>%  
+  as.data.frame  %>% 
+  rename( COUNT = ".") %>%
+  mutate(FEATURE = c("Total", "Deaths", "Severe Injuries", "Light Injuries",
+                     rep(c("Total", "Deaths", "Injuries"),3))) %>%
+  mutate(CATEGORY = c(replicate(4,"Total"),
+                      replicate(3, "Pedestrians"),
+                      replicate(3, "Motorcyclists"),
+                      replicate(3, "Cyclists"))) %>%
+  filter( CATEGORY == 'Total' & FEATURE != 'Total') %>%
+  ggplot(aes(x=factor(FEATURE, levels = c("Light Injuries", "Severe Injuries",
+                                          "Deaths")),y=COUNT,fill=FEATURE))+
+  geom_bar(stat='identity') +
+  geom_text(aes(label=comma(COUNT)), 
+            position=position_dodge(width=.2),vjust=-2) +
+  scale_y_continuous(expand = expansion(add=c(0,6000))) +
+  labs(title="Breakdown by Injury Type", x='', y='') +
+  theme(legend.position = 'none')
+
+```
+
+
+
+**The third** group breaks down the type of vehicles involved in the accident.
+
+----   
+
+## 3. Accident nature  
+
+
+----   
+    
+## 4. Location variables  
+
+
+
+
+
+
+
+
