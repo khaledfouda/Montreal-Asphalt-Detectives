@@ -199,7 +199,7 @@ accidents %>%
             position=position_dodge(width=.2),vjust=-2) +
   scale_y_continuous(expand = expansion(add=c(0,6000))) +
   labs(title="Breakdown by Injury Type", x='', y='') +
-  theme(legend.position = 'none', #panel.background = element_blank(),
+  theme(legend.position = 'none', panel.background = element_blank(),
         axis.ticks.x = element_blank(),
         axis.text.x = element_text(face='bold', size=10)) 
   
@@ -303,46 +303,6 @@ Mostly null values (97.7%).
 There are 25 features, however, we have chosen a relevant subset.  
 
 * VITESSE_AUTOR: Authorized speed in KM/H. (39.4% not specified).
-* CD_ETAT_SURF: Surface condition:
-  + 11: Dry (No spill)
-  + 12: Wet
-  + 13: Water accumulation
-  + 14: Sand or gravel
-  + 15: Slush
-  + 16: Snow
-  + 17: Hard snow
-  + 18: Ice
-  + 19: Muddy
-  + 20: Oily
-  + 99: Other (0.3%)
-  +   : Not specified (6.0%)
-* CD_ECLRM: Lightning at the moment of the accident:
-  + 1: Day and clear
-  + 2: Day and semi-dark
-  + 3: Night and lighted
-  + 4: Night and dark
-  +  : Not specified (6.1%)
-* CD_ENVRN_ACCDN: Environment (The dominant activity of the sector where the accident happenned):
-  + 1: School area
-  + 2: Residential
-  + 3: Commercial
-  + 4: Industrial
-  + 5: Rural
-  + 6: Forest
-  + 7: Park
-  + 9: Other (example: lakes)
-  +  : Not specified (3.3%)
-* CD_ETAT_CHASS: The quality of the road:
-  + 1: In a good condition
-  + 2: Under construction / repair
-  + 3: Ruts (Deformation of the asphalt)
-  + 4: Significant cracks
-  + 5: Potholes
-  + 6: Slopes and different leveling. 
-  + 9: Other (0.1%)
-  + 0: Not specified. (76.0%)
-* CD_
-
 
 ```{r fig.width=12, fig.height=8, warning=FALSE}
 accidents  %>%
@@ -356,7 +316,26 @@ accidents  %>%
   labs(title = "Authorised speed per year for when the accidents happenned",
        x = 'Authorised Speed', y ='Frequency of Accidents')+
   theme(legend.position = 'none', panel.background = element_blank())
-#------------------------------------------------------------------------  
+#------------------------------------------------------------------------ 
+```
+
+* CD_ETAT_SURF: Surface condition:
+  + 11: Dry (No spill)
+  + 12: Wet
+  + 13: Water accumulation
+  + 14: Sand or gravel
+  + 15: Slush
+  + 16: Snow
+  + 17: Hard snow
+  + 18: Ice
+  + 19: Muddy
+  + 20: Oily
+  + 99: Other (0.3%)
+  +   : Not specified (6.0%)
+
+  
+
+```{r fig.width=12, fig.height=8, warning=FALSE}
 accidents %>%
   select(CD_ETAT_SURFC) %>%
   replace(is.na(.), 0) %>%
@@ -383,6 +362,17 @@ accidents %>%
        x='', y='') +
   theme(panel.background = element_blank(), axis.ticks.y = element_blank())
 #-----------------------------------------------------------------------------
+```
+
+* CD_ECLRM: Lightning at the moment of the accident:
+  + 1: Day and clear
+  + 2: Day and semi-dark
+  + 3: Night and lighted
+  + 4: Night and dark
+  +  : Not specified (6.1%)
+
+     
+```{r fig.width=12, fig.height=8, warning=FALSE}
 accidents %>%
   select(CD_ECLRM) %>%
   replace(is.na(.), 0) %>%
@@ -406,6 +396,22 @@ accidents %>%
        y='Number of Accidents', x='') +
   theme(panel.background = element_blank(), axis.ticks.y = element_blank())
 #-------------------------------------------------------------------------
+```
+
+
+* CD_ENVRN_ACCDN: Environment (The dominant activity of the sector where the accident happenned):
+  + 1: School area
+  + 2: Residential
+  + 3: Commercial
+  + 4: Industrial
+  + 5: Rural
+  + 6: Forest
+  + 7: Park
+  + 9: Other (example: lakes)
+  +  : Not specified (3.3%)
+     
+      
+```{r fig.width=12, fig.height=8, warning=FALSE}
 
 accidents %>%
   select(CD_ENVRN_ACCDN) %>%
@@ -431,7 +437,20 @@ accidents %>%
   theme(panel.background = element_blank(), axis.ticks.y = element_blank())
 #-------------------------------------------------------------------------
 
+```
 
+* CD_ETAT_CHASS: The quality of the road:
+  + 1: In a good condition
+  + 2: Under construction / repair
+  + 3: Ruts (Deformation of the asphalt)
+  + 4: Significant cracks
+  + 5: Potholes
+  + 6: Slopes and different leveling. 
+  + 9: Other (0.1%)
+  + 0: Not specified. (76.0%)
+   
+    
+```{r fig.width=12, fig.height=8, warning=FALSE}
 accidents %>%
   select(CD_ETAT_CHASS) %>%
   replace(is.na(.), 0) %>%
@@ -457,9 +476,53 @@ accidents %>%
        y='Number of Accidents', x='') +
   theme(panel.background = element_blank(), axis.ticks.y = element_blank())
 #-----------------------------------------------------------------------------
+```
+
+* CD_COND_METEO: Weather conditions:
+  + 11: Clear sky
+  + 12: Cloudy
+  + 13: Foggy
+  + 14: Drizzle
+  + 15: Heavy rain
+  + 16: Strong wind (no blowing snow or rain)
+  + 17: Snow / hail
+  + 18: Snowstorms and blowing snow
+  + 19: Black ice
+  + 99: Other (0.6%)
+  +   : Not specified (6.4%)
+  
+     
+```{r fig.width=12, fig.height=8, warning=FALSE}
+accidents %>%
+  select(CD_COND_METEO) %>%
+  replace(is.na(.), 0) %>%
+  table(useNA = 'ifany') %>%
+  as.data.frame %>%
+  mutate(CD_COND_METEO = factor(CD_COND_METEO, levels = c(11,12,13,14,15,16,
+                                                          17,18,19,99,0),
+                                labels =  c('Clear Sky','Cloudy','Foggy','Drizzle',
+                                            'Heavy Rain','Strong Wind', 'Snow',
+                                            'Snowstorms', 'Black Ice', 'Other',
+                                            'Not specified' ))) %>%
+  mutate(PERC = Freq / nrow(accidents) * 100) %>%
+  mutate(PERC = paste0('(', round(PERC, 2),"%)")) %>%
+  ggplot(aes(x=reorder(CD_COND_METEO,-Freq), y= Freq, fill=CD_COND_METEO)) +
+  geom_bar(stat='identity', alpha=.4,colour='#00abff') +
+  coord_flip() +
+  geom_text(aes(label = paste0(comma(Freq),'  ',PERC)),position=position_dodge(width=.2),
+            hjust = -.2) +
+  theme(legend.position = 'none', 
+        axis.text.y = element_text(face='bold', size=10)) +
+  scale_y_continuous(expand = expansion(add=c(0,30000))) +
+  labs(title = "Weather Conditions",
+       y='Number of Accidents', x='') +
+  theme(panel.background = element_blank(), axis.ticks.y = element_blank())
+
+
 
 ```
 
 
+--------------------------------------
 
 

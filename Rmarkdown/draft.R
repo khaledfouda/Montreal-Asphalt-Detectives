@@ -276,7 +276,7 @@ accidents %>%
 
 #-------------------------------------------------------------------
 accidents %>%
-  select(CD_ETAT_CHASS) %>%
+  select(CD_COND_METEO) %>%
   table(useNA = 'ifany') / nrow(accidents) * 100
 
 
@@ -309,5 +309,38 @@ accidents %>%
   labs(title = "The Quality of the Road",
        y='Number of Accidents', x='') +
   theme(panel.background = element_blank(), axis.ticks.y = element_blank())
+#----------------------------------------------------------------------------
+
+
+
+accidents %>%
+  select(CD_COND_METEO) %>%
+  replace(is.na(.), 0) %>%
+  table(useNA = 'ifany') %>%
+  as.data.frame %>%
+  mutate(CD_COND_METEO = factor(CD_COND_METEO, levels = c(11,12,13,14,15,16,
+                                                          17,18,19,99,0),
+                                labels =  c('Clear Sky','Cloudy','Foggy','Drizzle',
+                                            'Heavy Rain','Strong Wind', 'Snow',
+                                            'Snowstorms', 'Black Ice', 'Other',
+                                            'Not specified' ))) %>%
+  mutate(PERC = Freq / nrow(accidents) * 100) %>%
+  mutate(PERC = paste0('(', round(PERC, 2),"%)")) %>%
+  ggplot(aes(x=reorder(CD_COND_METEO,-Freq), y= Freq, fill=CD_COND_METEO)) +
+  geom_bar(stat='identity', alpha=.4,colour='#00abff') +
+  coord_flip() +
+  geom_text(aes(label = paste0(comma(Freq),'  ',PERC)),position=position_dodge(width=.2),
+            hjust = -.2) +
+  theme(legend.position = 'none', 
+        axis.text.y = element_text(face='bold', size=10)) +
+  scale_y_continuous(expand = expansion(add=c(0,30000))) +
+  labs(title = "Weather Conditions",
+       y='Number of Accidents', x='') +
+  theme(panel.background = element_blank(), axis.ticks.y = element_blank())
+
+
+
+
+
 
 
