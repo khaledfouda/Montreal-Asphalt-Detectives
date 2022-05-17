@@ -3,6 +3,8 @@ setwd("E:/Montreal-Asphalt-Detectives/Rmarkdown")
 library(knitr)
 library(lubridate)
 library(tidyr)
+library(tidyverse)
+library(scales)
 #-----------------------------------------------------------------------
 counts19_21 <- read_csv("../data/counts_cars_pedast_cyclists_2019_2021.csv")
 counts17_19 <- read_csv("../data/counts_cars_pedast_cyclists_2017_2019.csv")
