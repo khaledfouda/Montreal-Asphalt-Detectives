@@ -10,14 +10,14 @@ coords = data.frame()
 for (i in 1:length(r.cond@polygons)) {
   coords = rbind(coords,cbind(r.cond@polygons[[i]]@Polygons[[1]]@coords,i))
 }
-colnames(coords) = c('Longitude', 'Latitude', 'ID')
+colnames(coords) = c('Coord_X', 'Coord_Y', 'ID')
 #--------------------------------------------------------------
 # cleaning
 r.cond %>% 
   as.data.frame %>%
   mutate(ID = 1:length(r.cond)) %>%
   merge(coords, by="ID", all.y=TRUE) %>%
-  select(Longitude, Latitude, arrondissement, type_surface,
+  select(Coord_X, Coord_Y, arrondissement, type_surface,
          condition_surface, condition_drainage, cote_globale) %>%
   mutate(Surface = factor(condition_surface,
                           levels = c('bon','Bon','Mauvais','Passable',
