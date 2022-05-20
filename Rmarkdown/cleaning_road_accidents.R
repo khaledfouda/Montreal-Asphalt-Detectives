@@ -85,9 +85,14 @@ accidentsDF %>%
   filter(MRC == 'Montréal (66 )') %>%
   # no longer need the variable.
   select(-MRC) %>%
-  # Rename the date column
-  mutate(Date = DT_ACCDN, .keep='unused') ->
+  # Rename the date and location variables
+  mutate(Date = DT_ACCDN, Longitude = LOC_LONG, 
+         Latitude = LOC_LAT, .keep='unused') ->
   accidents
+#---------------------------------------------------------------------
+write.csv(accidents, '../data/created/Road_Accidents_clean.csv',
+          row.names = FALSE)
+#---------------------------------------------------------------------
 #-----------------------------------------------------------------------
   # shows the percentage of null values in each column
   (accidents %>% is.na() %>% colSums() / nrow(accidents)*100) %>%
@@ -96,18 +101,18 @@ accidentsDF %>%
   filter(. > 0) %>%
   kable
 #---------------------------------------------------------------------
-  # shows the rows of null values in specific column(s)
-accidents %>%
-  #select(contains('NB',ignore.case = FALSE)) %>%
-  filter_at(vars(contains('NB',ignore.case = TRUE)), any_vars(is.na(.))) %>%
-  View()
-#------------------------------------------------------------------------
-accidents %>% 
-  select(REG_ADM) %>%
-  table(useNA = 'ifany') %>% sort(decreasing = TRUE)  %>% kable
-  View()
-
-  
+#   # shows the rows of null values in specific column(s)
+# accidents %>%
+#   #select(contains('NB',ignore.case = FALSE)) %>%
+#   filter_at(vars(contains('NB',ignore.case = TRUE)), any_vars(is.na(.))) %>%
+#   View()
+# #------------------------------------------------------------------------
+# accidents %>% 
+#   select(REG_ADM) %>%
+#   table(useNA = 'ifany') %>% sort(decreasing = TRUE)  %>% kable
+#   View()
+# 
+#   
   
   
   
