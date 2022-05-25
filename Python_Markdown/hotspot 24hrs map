@@ -1,0 +1,107 @@
+import numpy as np
+import pandas as pd
+df = pd.read_csv('collisions_dataset.csv') # I am using the car collision from montreal open data. The original one
+
+df.rename(columns={'LOC_LONG':'longitude','LOC_LAT':'latitude','HEURE_ACCDN':'time','DT_ACCDN':'date'}, inplace = True)
+
+start_date = '2015/01/01'
+
+hours_to_int = {
+               '02:00:00-02:59:00':2 , '15:00:00-15:59:00':15, '21:00:00-21:59:00':21,
+               '00:00:00-00:59:00':0, '07:00:00-07:59:00':7, '17:00:00-17:59:00':17,
+               '12:00:00-12:59:00':12, '10:00:00-10:59:00':10, '11:00:00-11:59:00':11,
+               '16:00:00-16:59:00':16, '18:00:00-18:59:00':18, '20:00:00-20:59:00':20,
+               '19:00:00-19:59:00':19, '03:00:00-03:59:00':3, '08:00:00-08:59:00':8,
+               '22:00:00-22:59:00':22, '14:00:00-14:59:00':14, '09:00:00-09:59:00':9,
+               '06:00:00-06:59:00':6, '13:00:00-13:59:00':13, '01:00:00-01:59:00':1,
+               '04:00:00-04:59:00':4, '05:00:00-05:59:00':5, '23:00:00-23:59:00':23,
+               
+               }
+
+###### Data cleaning ######
+
+class Clean():
+        
+    def __init__ (self, data1):
+        self.data1 = pd.DataFrame(data1[['longitude','latitude','date','time']])
+        self.data1 = self.data1[self.data1['time'].str.contains('Non précisé') == False]  
+        self.data1 = self.data1[self.data1['date'] < start_date]
+        self.data1 = self.data1.dropna()
+
+        
+data = Clean(df).data1
+data['time'].replace(hours_to_int,inplace=True)
+data.time.astype(str).astype(int)
+
+
+
+################ Time series map ##################
+import folium 
+from folium.plugins import HeatMapWithTime 
+
+montreal_timeseries = folium.Map(location = [45.5088888,-73.561668], zoom_start = 12)
+
+hour_list =[[] for row in range (24)]
+for lat, long, hour in zip(data.latitude, data.longitude, data.time):
+    hour_list[hour].append([lat,long])
+index = [str(i)+' Hours' for i in range(24)]
+
+HeatMapWithTime(hour_list, index).add_to(montreal_timeseries)
+    
+
+
+################### Death visualization on the map ###################### 
+
+death = df[df['GRAVITE'] == 'Mortel']
+death_data = Clean(death).data1. # Clean is the class defined before
+death_data['time'].replace(hours_to_int,inplace=True)
+
+import folium 
+
+death_map = folium.Map(location = [45.5088888,-73.561668], zoom_start = 12)
+
+
+for lat, long in zip(death_data.latitude, death_data.longitude):
+        folium.features.CircleMarker(
+            [lat, long],
+            radius=2,
+            color='blue',
+            fill=True,
+            fill_color='blue',
+            fill_opacity=0.6
+        ).add_to(death_map)
+        
+death_map
+
+
+
+################### Death time series #########################
+
+import folium 
+from folium.plugins import HeatMapWithTime 
+
+montreal_death_time = folium.Map(location = [45.5088888,-73.561668], zoom_start = 12)
+
+
+hour_list =[[] for row in range (24)]
+for lat, long, hour in zip(death_data.latitude, death_data.longitude, death_data.time):
+    hour_list[hour].append([lat,long])
+index = [str(i)+' Hours' for i in range(24)]
+
+HeatMapWithTime(hour_list, index).add_to(montreal_death_time)
+    
+    
+montreal_death_time
+
+
+
+
+
+
+
+
+
+
+
+
+

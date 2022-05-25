@@ -1,0 +1,93 @@
+import numpy as np
+import pandas as pd
+import folium # interactive mapping 
+
+df = pd.read_csv('Road_Accidents_clean.csv')  ## I am using the cleaned dataset by Khaled 
+start_date = '2014/01/01'
+time = df['Date'] < start_date
+df.loc[time]   ## pick the range of accidents you want. 
+
+points = pd.DataFrame(df.loc[time][['Longitude','Latitude','Environment']]) # Created DataFrame
+locations = points[['Latitude', 'Longitude']]
+locationlist = locations.values.tolist() # list form of longitude and latitude
+
+
+
+######## First visualization scatter points on the map. ###########
+
+montreal_map = folium.Map(location = [45.5088888,-73.561668], zoom_start = 12) ## generate the map of Montreal
+for lat, lng, label in zip(points.Latitude, points.Longitude, points.Environment):
+        folium.features.CircleMarker(
+            [lat, lng],
+            radius=3,
+            color='red',
+            popup =label, # popup labels a piece of information assocaited to the points. I choose environment in this case
+            fill=True,
+            fill_color='darkred',
+            fill_opacity=0.6
+        ).add_to(montreal_map)
+
+montreal_map 
+
+
+######## Second visualization clusters ###########
+
+from folium import plugins # plugins to make clusters on the map
+
+accidents = plugins.MarkerCluster().add_to(montreal_map)
+
+for lat, lng in zip(points.Latitude, points.Longitude):
+    folium.Marker(
+    location = [lat, lng], 
+    icone = None,
+    ).add_to(accidents)
+
+montreal_map
+
+
+######## Third visualization Heatmap #############
+
+from folium.plugins import HeatMap
+
+Montreal_heatmap = folium.Map(location = [45.5088888,-73.561668], zoom_start = 12)
+HeatMap(locationlist).add_to(Montreal_heatmap) ### HeatMap() takes list 
+
+Montreal_heatmap
+
+
+############# Fourth Visualization ############### 
+import seaborn
+import contextily
+import matplotlib.pyplot as plt
+
+jointed = seaborn.jointplot(x = 'Longitude', y ='Latitude', data =points, s= 0.5)
+contextily.add_basemap(
+    jointed.ax_joint,
+    crs= "EPSG:4326",
+    source=contextily.providers.CartoDB.PositronNoLabels
+);
+
+
+
+############# Fifth Viusalization: Hotspot Polygon on the map ##############
+
+f, ax = plt.subplots(1, figsize=(16, 12))
+hb = ax.hexbin(
+    points['Longitude'], 
+    points['Latitude'],
+    gridsize=50, 
+    linewidths=0,
+    alpha=0.6, 
+    cmap= 'viridis_r'
+)
+
+contextily.add_basemap(
+    ax, 
+    source=contextily.providers.CartoDB.Positron
+)
+
+plt.colorbar(hb)
+
+ax.set_axis_off()
+
+############### Time series Hotmap plot ##################
