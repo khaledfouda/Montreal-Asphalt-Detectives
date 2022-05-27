@@ -4,6 +4,8 @@ library(lubridate)
 library(tidyr)
 library(tidyverse)
 library(scales)
+setwd("E:/Montreal-Asphalt-Detectives/Rmarkdown")
+
 #-------------------------------------------------------
 r.cond = geojson_read('../data/condition-ruelles-2019.json', what='sp')
 coords = data.frame()

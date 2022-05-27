@@ -39,3 +39,8 @@ LOC.MAP %>% mutate(Cluster = NA) -> LOC.MAP
 write.csv(LOC.MAP, '../data/created/Location_mapper.csv',
           row.names = FALSE)
 #-------------------------------------------------------------
+# Random clusters:
+LOC.MAP = read_csv('../data/created/Location_mapper.csv')
+LOC.MAP$Cluster = sample(1:10, nrow(LOC.MAP),replace = T)
+write.csv(LOC.MAP, '../data/created/Location_mapper_random.csv',
+          row.names = FALSE)
