@@ -32,36 +32,39 @@ conditionsDF %>%
 
 
 #--------------------------------------------------------------------------
-model.matrix(~ .+ 0, data=accidentsDF$Severity,
-             contrasts.arg = lapply(df, contrasts, contrasts=FALSE)) %>% View
-
-
-
 accidentsDF %>%
   # 1. Severity
-  # cbind(with(accidentsDF,model.matrix(~ Severity + 0))) %>% 
-  # select(-Severity) %>%
-  # # 2. Accident type
-  # cbind(with(accidentsDF,model.matrix(~ as.factor(Accident_Type) + 0))) %>%
-  # select(-Accident_Type, -`as.factor(Accident_Type)-1`) %>%
-  # # 3. Accident category
-  # cbind(with(accidentsDF,model.matrix(~ Accident_Category + 0))) %>%
-  # select(-Accident_Category, -`Accident_CategoryUnknown`) %>%
-  # # 4. Auth Speed
+  cbind(with(accidentsDF,model.matrix(~ Severity + 0))) %>%
+  select(-Severity) %>%
+  # 2. Accident type
+  cbind(with(accidentsDF,model.matrix(~ as.factor(Accident_Type) + 0))) %>%
+  select(-Accident_Type, -`as.factor(Accident_Type)-1`) %>%
+  # 3. Accident category
+  cbind(with(accidentsDF,model.matrix(~ Accident_Category + 0))) %>%
+  select(-Accident_Category, -`Accident_CategoryUnknown`) %>%
+  # 4. Authorized Speed
   cbind(with(accidentsDF,model.matrix(~ Auth_Speed + 0))) %>%
   select(-Auth_Speed, -`Auth_SpeedUnknown`) %>%
-  # 5. Surface Cond
+  # 5. Surface Condition
   cbind(with(accidentsDF,model.matrix(~ Surface_Cond + 0))) %>%
   select(-Surface_Cond, -`Surface_CondOther or Unknown`) %>%
   # 6. Illumination
   cbind(with(accidentsDF,model.matrix(~ Illumination + 0))) %>%
   select(-Illumination, -`IlluminationUnknown`) %>%
-  
+  # 7. Environment
+  cbind(with(accidentsDF,model.matrix(~ Environment + 0))) %>%
+  select(-Environment, -`EnvironmentOther or Unknown`) %>%
+  # 7. Weather
+  cbind(with(accidentsDF,model.matrix(~ Weather + 0))) %>%
+  select(-Weather, -`WeatherOther or Unknown`) -> accidentsDF
+#-----------------------------------------------------------------
+write.csv(accidentsDF, '../data/created/timeseries/ts_accidents.csv',
+          row.names = F)
+
+accidentsDF %>% 
+  group_by(Cluster, Date) %>%
+  summarise(across(everything(), sum)) %>%
   View
-
-
-
-
 
 
 
