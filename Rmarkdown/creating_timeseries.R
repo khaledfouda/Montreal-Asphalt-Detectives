@@ -5,12 +5,9 @@ library(ggpubr)
 library(gridExtra) # Allows for multiple plots with grid arrangement
 library(ggiraph) # Expand on ggplot library
 library(ggiraphExtra) # Expand on ggplot library
-#library(ggradar) # Expands ggplot library with radar plot
 library(waffle)
 library(scales)
 library(knitr)
-#library(epiDisplay)
-
 
 
 accidentsDF <- read.csv('../data/created/Road_Accidents_clean.csv')
@@ -69,7 +66,7 @@ accidentsDF %>%
 
 accidentsDF %>%
   group_by(Date, Cluster) %>%
-  summarise(across(everything(), sum)) %>%
+  summarise(across(everything(), sum)) %>% View
   write.csv('../data/created/timeseries/ts_accidents_by_date_cluster.csv',
             row.names = F)
 #----------------------------------------------------------------------
