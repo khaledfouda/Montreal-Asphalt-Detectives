@@ -28,7 +28,7 @@ countsDF %>%
   select(-ID, -Longitude, -Latitude) -> countsDF
 conditionsDF %>%
   left_join(LOC.MAP, by='ID') %>% 
-  select(-ID, -Longitude, -Latitude) -> conditionsDF
+  select(-ID, -Longitude, -Latitude,-Coord_X, -Coord_Y) -> conditionsDF
 
 
 #--------------------------------------------------------------------------
@@ -58,18 +58,66 @@ accidentsDF %>%
   cbind(with(accidentsDF,model.matrix(~ Weather + 0))) %>%
   select(-Weather, -`WeatherOther or Unknown`) -> accidentsDF
 #-----------------------------------------------------------------
-write.csv(accidentsDF, '../data/created/timeseries/ts_accidents.csv',
-          row.names = F)
-
-accidentsDF %>% 
-  group_by(Cluster, Date) %>%
+accidentsDF %>%
+  mutate(Cluster_ = as.factor(Cluster)) %>%
+  cbind(with(., model.matrix(~ Cluster_ + 0))) %>%
+  select(- Cluster, -Cluster_) %>% 
+  group_by(Date) %>%
   summarise(across(everything(), sum)) %>%
-  View
+  write.csv('../data/created/timeseries/ts_accidents_by_date.csv',
+            row.names = F)
+
+accidentsDF %>%
+  group_by(Date, Cluster) %>%
+  summarise(across(everything(), sum)) %>%
+  write.csv('../data/created/timeseries/ts_accidents_by_date_cluster.csv',
+            row.names = F)
+#----------------------------------------------------------------------
+conditionsDF %>%
+  #1. Arrondissement
+  rename(arrondissement_ = arrondissement) %>%
+  cbind(with(., model.matrix(~ arrondissement_ + 0))) %>%
+  select(-arrondissement_) %>%
+  # 2. Surface
+  mutate(Surface_ = as.factor(Surface)) %>%
+  cbind(with(., model.matrix(~ Surface_ + 0))) %>%
+  select(-Surface, -Surface_) %>%
+  #3. Drainage
+  mutate(Drainage_ = as.factor(Drainage)) %>%
+  cbind(with(., model.matrix(~ Drainage_ + 0))) %>%
+  select(-Drainage, -Drainage_) %>% 
+  # 4. Total
+  mutate(Total = as.factor(round(Total))) %>%
+  rename(Total_ = Total) %>%
+  cbind(with(., model.matrix(~ Total_ + 0))) %>%
+  select(-Total_) %>% 
+  # 5. Surface type
+  rename(Surface_type_ = Surface_type) %>%
+  cbind(with(., model.matrix(~ Surface_type_ + 0))) %>%
+  select(-Surface_type_, -Surface_type_None) %>% 
+  group_by(Cluster) %>%
+  summarise(across(everything(), sum)) -> conditionsDF
+#---------------------------------------------------------------------  
+write.csv(conditionsDF, '../data/created/timeseries/ts_conditions_by_cluster.csv',
+          row.names = F)
+#---------------------------------------------------------------
+countsDF %>%
+  select(-Id_Intersection, -Intersection_1, -Intersection_2) -> countsDF
+#---------------------------------------------------------------------
+countsDF %>%
+  mutate(Cluster_ = as.factor(Cluster)) %>%
+  cbind(with(., model.matrix(~ Cluster_ + 0))) %>%
+  select(- Cluster, -Cluster_) %>% 
+  group_by(Date) %>%
+  summarise(across(everything(), sum)) %>%
+  write.csv('../data/created/timeseries/ts_counts_by_date.csv',
+            row.names = F)
+
+countsDF %>%
+  group_by(Date, Cluster) %>%
+  summarise(across(everything(), sum)) %>%
+  write.csv('../data/created/timeseries/ts_counts_by_date_cluster.csv',
+            row.names = F)
+#-----------------------------------------------------------------------
 
 
-
-with(accidentsDF,model.matrix(~ Accident_Category + 0)) %>% View
-
-
-
-precaret::dummyVars(Accident_Type ~ ., data=accidentsDF) %>% View
