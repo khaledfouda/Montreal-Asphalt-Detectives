@@ -13,7 +13,7 @@ library(knitr)
 accidentsDF <- read.csv('../data/created/Road_Accidents_clean.csv')
 countsDF <- read.csv('../data/created/counts_cars_pedast_cyclists_2017_2020.csv')
 conditionsDF <- read.csv('../data/created/Road_conditions_2019_clean_coordinates_fixed.csv')
-LOC.MAP <- read.csv('../data/created/Location_mapper_random.csv')
+LOC.MAP <- read.csv('../data/created/Location_mapper_all_random.csv')
 #------------------------------------------------------------------------
 LOC.MAP %>% 
   select(ID, Cluster) -> LOC.MAP
@@ -60,13 +60,13 @@ accidentsDF %>%
   cbind(with(., model.matrix(~ Cluster_ + 0))) %>%
   select(- Cluster, -Cluster_) %>% 
   group_by(Date) %>%
-  summarise(across(everything(), sum)) %>%
+  summarise(NB_Accidents = n(), across(everything(), sum)) %>%
   write.csv('../data/created/timeseries/ts_accidents_by_date.csv',
             row.names = F)
 
 accidentsDF %>%
   group_by(Date, Cluster) %>%
-  summarise(across(everything(), sum)) %>% View
+  summarise(NB_Accidents = n(), across(everything(), sum)) %>% 
   write.csv('../data/created/timeseries/ts_accidents_by_date_cluster.csv',
             row.names = F)
 #----------------------------------------------------------------------
@@ -93,7 +93,7 @@ conditionsDF %>%
   cbind(with(., model.matrix(~ Surface_type_ + 0))) %>%
   select(-Surface_type_, -Surface_type_None) %>% 
   group_by(Cluster) %>%
-  summarise(across(everything(), sum)) -> conditionsDF
+  summarise(NB_Obs = n(), across(everything(), sum)) -> conditionsDF
 #---------------------------------------------------------------------  
 write.csv(conditionsDF, '../data/created/timeseries/ts_conditions_by_cluster.csv',
           row.names = F)
@@ -106,13 +106,13 @@ countsDF %>%
   cbind(with(., model.matrix(~ Cluster_ + 0))) %>%
   select(- Cluster, -Cluster_) %>% 
   group_by(Date) %>%
-  summarise(across(everything(), sum)) %>%
+  summarise(NB_Accidents = n(), across(everything(), sum)) %>%
   write.csv('../data/created/timeseries/ts_counts_by_date.csv',
             row.names = F)
 
 countsDF %>%
   group_by(Date, Cluster) %>%
-  summarise(across(everything(), sum)) %>%
+  summarise(NB_Accidents = n(), across(everything(), sum)) %>%
   write.csv('../data/created/timeseries/ts_counts_by_date_cluster.csv',
             row.names = F)
 #-----------------------------------------------------------------------

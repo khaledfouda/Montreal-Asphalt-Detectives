@@ -26,21 +26,28 @@ accidents %>% write.csv('../data/created/Road_Accidents_clean.csv',
                         row.names = FALSE)
 #--------------------------------------------------------------
 
-conditions %>% select(ID, Longitude, Latitude) -> LOC.MAP
+accidents %>% select(ID, Longitude, Latitude) -> LOC.MAP
 
 counts %>% select(ID, Longitude, Latitude) %>% 
-  rbind(LOC.MAP) -> LOC.MAP
+  rbind(LOC.MAP) -> LOC.MAP.ALL
 
-accidents %>% select(ID, Longitude, Latitude) %>% 
-  rbind(LOC.MAP) -> LOC.MAP
+conditions %>% select(ID, Longitude, Latitude) %>% 
+  rbind(LOC.MAP.ALL) -> LOC.MAP.ALL
 
 LOC.MAP %>% mutate(Cluster = NA) -> LOC.MAP
+LOC.MAP.ALL %>% mutate(Cluster = NA) -> LOC.MAP.ALL
 #-------------------------------------------------------------
 write.csv(LOC.MAP, '../data/created/Location_mapper.csv',
           row.names = FALSE)
+write.csv(LOC.MAP.ALL, '../data/created/Location_mapper_all.csv',
+          row.names = FALSE)
 #-------------------------------------------------------------
 # Random clusters:
-LOC.MAP = read_csv('../data/created/Location_mapper.csv')
-LOC.MAP$Cluster = sample(1:10, nrow(LOC.MAP),replace = T)
-write.csv(LOC.MAP, '../data/created/Location_mapper_random.csv',
+LOC.MAP %>% 
+  mutate(Cluster = sample(1:40, nrow(LOC.MAP),replace = T)) %>%
+  write.csv('../data/created/Location_mapper_random.csv',
           row.names = FALSE)
+LOC.MAP.ALL %>% 
+  mutate(Cluster = sample(1:40, nrow(LOC.MAP.ALL),replace = T)) %>%
+  write.csv('../data/created/Location_mapper_all_random.csv',
+            row.names = FALSE)
