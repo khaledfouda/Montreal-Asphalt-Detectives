@@ -1,0 +1,102 @@
+setwd("E:/Montreal-Asphalt-Detectives/Rmarkdown")
+
+accidentsDF <- read.csv('../data/created/timeseries/ts_accidents_by_date.csv',
+                        header = TRUE)
+library(tidyverse)
+
+library(scales)
+library(knitr)
+#library(epiDisplay)
+library(forecast)
+library(lubridate)
+library(grid)
+library(magrittr)
+library(tibbletime)
+library(forecast)
+library(caret)
+# Transfer data into weekly
+accidentsDF %<>% 
+  select(-starts_with('cluster'),
+         -starts_with('NB'), -starts_with('as.factor.Accident'),
+         NB_Accidents) %>%
+  mutate(Date = as.Date(Date)) %>%
+  mutate(y = year(Date)) %>%
+  group_by(y) %>%
+  arrange(Date) %>%
+  mutate(Date = as.Date(cut(Date, '7 d'))) %>%
+  arrange(Date) %>%
+  group_by(Date) %>%
+  summarise_all(sum) %>% 
+  select(-y) -> accidentsDF.weekly
+
+accidentsDF.weekly %>%
+  select(-Date, -NB_Accidents 
+         #-EnvironmentCommercial,
+         #-EnvironmentResidential,- Auth_Speed40, -Auth_Speed50,
+         #-Accident_CategoryMoving.Object, -IlluminationNight.and.lighted,
+         #-WeatherSnow, -Surface_CondSnow, -WeatherClear.Sky
+         )  -> data.l
+
+accidentsDF.weekly %<>%
+  select(Date, NB_Accidents)
+
+
+
+dts.w = ts(accidentsDF.weekly$NB_Accidents, start=c(2012,1),
+         end = c(2020,53), frequency = 53)
+
+
+fit <- auto.arima(dts.w, stepwise = T,trace = F,
+                  parallel = TRUE);fit;checkresiduals(fit)
+plot(fit)
+plot(forecast(fit.w,h=20))
+residuals(fit) %>% autoplot()
+Pacf(residuals(fit))
+
+dts %>% diff(lag=52) %>% ggtsdisplay()
+#----------------------
+
+library(corrr)
+
+cor.mat = correlate(data.l, diagonal = .2)
+cor.mat  %>% shave %>%
+  gather(-term, key = "colname", value = "cor") %>%
+  filter(abs(cor) > 0.8) %>% View
+#-------------------------
+# Linear regression
+
+model_ts <- arima(dts.w, c(5,1,2), 
+                  seasonal=list(order=c(1,0,0), period=53))
+summary(model_ts)
+data.l$Y = residuals(model_ts)
+
+# dividing data to train, test
+set.seed(100)
+#data.l %<>% as.data.frame()
+index = sample(1:nrow(data.l), .7*nrow(data.l))
+train.l = data.l[index,]
+test.l = data.l[-index,]
+
+
+#index = sample(1:length(Y), .7*length(Y))
+#X_train = data.l[index,]
+#X_test = data.l[-index,]
+#Y_train = Y[index]
+#Y_test = Y[-index]
+# scaling:
+pre.proc.X = preProcess(data.l,
+                        method = c("center", 'scale'))
+train.l = predict(pre.proc.X, train.l)
+test.l = predict(pre.proc.X, test.l)
+# pre.proc.Y = preProcess(as.matrix(Y), method = c('center', 'scale'))
+# Y_train = predict(pre.proc.Y, Y_train)
+# Y_test = predict(pre.proc.Y, Y_test)
+summary(train.l)
+lr = lm(Y ~ ., data=train.l)
+summary(lr)
+sqrt(mean(lr$residuals^2))
+RMSE(predict(lr, test.l[,-49], test.l[['Y']]))
+
+
+
+
