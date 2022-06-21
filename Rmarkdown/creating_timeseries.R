@@ -14,20 +14,25 @@ accidentsDF <- read.csv('../data/created/Road_Accidents_clean.csv')
 countsDF <- read.csv('../data/created/counts_cars_pedast_cyclists_2017_2020.csv')
 conditionsDF <- read.csv('../data/created/Road_conditions_2019_clean_coordinates_fixed.csv')
 LOC.MAP <- read.csv('../data/created/Location_mapper_all_random.csv')
+weatherDF <- read.csv('../data/created/Weather_features.csv')
+clusters <- read.csv('../data/created/cluster_id.csv')
 #------------------------------------------------------------------------
 LOC.MAP %>% 
   select(ID, Cluster) -> LOC.MAP
-accidentsDF %>%
-  left_join(LOC.MAP, by='ID') %>% 
-  select(-ID, -Longitude, -Latitude) -> accidentsDF
+accidentsDF %<>%
+  left_join(clusters, by=c('Longitude', 'Latitude')) %>% 
+  select(-X, -Longitude, -Latitude)  
+
 countsDF %>%
   left_join(LOC.MAP, by='ID') %>% 
   select(-ID, -Longitude, -Latitude) -> countsDF
+
 conditionsDF %>%
   left_join(LOC.MAP, by='ID') %>% 
   select(-ID, -Longitude, -Latitude,-Coord_X, -Coord_Y) -> conditionsDF
 
-
+weatherDF %>%
+  filter(is.na(Temp))
 #--------------------------------------------------------------------------
 accidentsDF %>%
   # 1. Severity
@@ -55,18 +60,18 @@ accidentsDF %>%
   cbind(with(accidentsDF,model.matrix(~ Weather + 0))) %>%
   select(-Weather, -`WeatherOther or Unknown`) -> accidentsDF
 #-----------------------------------------------------------------
-accidentsDF %>%
+accidentsDF.cluster <- accidentsDF %>%
   mutate(Cluster_ = as.factor(Cluster)) %>%
   cbind(with(., model.matrix(~ Cluster_ + 0))) %>%
   select(- Cluster, -Cluster_) %>% 
   group_by(Date) %>%
-  summarise(NB_Accidents = n(), across(everything(), sum)) %>%
+  summarise(NB_Accidents = n(), across(everything(), sum)) %T>%
   write.csv('../data/created/timeseries/ts_accidents_by_date.csv',
             row.names = F)
 
 accidentsDF %>%
   group_by(Date, Cluster) %>%
-  summarise(NB_Accidents = n(), across(everything(), sum)) %>% 
+  summarise(NB_Accidents = n(), across(everything(), sum)) %>% View
   write.csv('../data/created/timeseries/ts_accidents_by_date_cluster.csv',
             row.names = F)
 #----------------------------------------------------------------------

@@ -29,35 +29,43 @@ accidentsDF %<>%
 
 
 
-#d = as_tbl_time(accidentsDF, index=Date)
-
-accidentsDF %<>% 
-  filter(! (day(Date) == 29 & month(Date)==2)) %>%
-  filter( day(Date) < 29)
-
-
 results <- accidentsDF$NB_Accidents %>% 
-  msts(start=c(2012,1), ts.frequency = 335, 
-       seasonal.periods = c(7,100,30,335) ) %>%
+  msts(start=c(2012,1), ts.frequency = 365, 
+       seasonal.periods = c(26:31) ) %>%
   mstl(iterate = 10) %T>%
   plot() 
 
 residuals.mstl = results[,ncol(results)]
 var(residuals.mstl)
 mean(residuals.mstl)
+pacf(residuals.mstl)
 Box.test(residuals.mstl, lag=1, type='Ljung')
 Box.test(residuals.mstl, lag=10)
-
+results %>% forecast(method= 'naive') %>% autoplot
 ols_test_normality(residuals.mstl)
 
 day(as.Date(accidentsDF[[15,1]]))
+
+
+#-------------------
+accidentsDF$NB_Accidents %>% 
+  msts( c(26:31) ) -> msts.d
+ts_ = ts(accidentsDF$NB_Accidents, frequency = 1)
+
+fit = auto.arima(ts_, seasonal=F, xreg=fourier(msts.d,K=c(3,3,3,3,3,3)))
+#-----------------
+
+arima1 = auto.arima(residuals.mstl)
+summary(arima1)
+
+
 
 #d %<>% as_period('week')
 
 dts.w = ts(accidentsDF.weekly$NB_Accidents, start=c(2012,1),
          end = c(2020,53), frequency = 53)
 dts.d = ts(accidentsDF$NB_Accidents, start=c(2012,1),
-          end = c(2020, 335), frequency = 335)
+          end = c(2020, 365), frequency = 365)
 # 
 # d %>% as.data.frame() %>%
 #   mutate(y = year(Date)) %>%

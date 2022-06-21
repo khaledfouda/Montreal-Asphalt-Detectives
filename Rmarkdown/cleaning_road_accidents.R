@@ -13,7 +13,7 @@ library(scales)
 library(knitr)
 #library(epiDisplay)
 
-
+weatherDF <- read.csv('../data/created/Weather_features.csv')
 
 accidentsDF %>%
   select(DT_ACCDN, contains('NB_',ignore.case = TRUE),
