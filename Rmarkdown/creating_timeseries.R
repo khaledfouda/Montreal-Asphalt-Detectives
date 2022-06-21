@@ -9,15 +9,18 @@ library(waffle)
 library(scales)
 library(knitr)
 
+library(padr)
 
-accidentsDF <- read.csv('../data/created/Road_Accidents_clean.csv')
+accidentsDF <- read.csv('../data/created/Road_Accidents_clean.csv') %>%
+  mutate(Date = as.Date(Date))
 countsDF <- read.csv('../data/created/counts_cars_pedast_cyclists_2017_2020.csv')
 conditionsDF <- read.csv('../data/created/Road_conditions_2019_clean_coordinates_fixed.csv')
 LOC.MAP <- read.csv('../data/created/Location_mapper.csv')
 
 weatherDF <- read.csv('../data/created/weather_no_nas.csv') %>%
   rename(Date=date) %>%
-  select(-num_accidents)
+  select(-num_accidents) %>%
+  mutate(Date = as.Date(Date))
 
 clusters <- read.csv('../data/created/cluster_id.csv') %>%
   select(-Longitude, -Latitude)
@@ -28,7 +31,6 @@ LOC.MAP %>%
 
 accidentsDF %<>%
   left_join(clusters, by='ID') %>% 
-  left_join(weatherDF, by='Date') %>%
   select(-ID, -Longitude, -Latitude)  
 
 countsDF %>%
@@ -38,6 +40,9 @@ countsDF %>%
 conditionsDF %>%
   left_join(LOC.MAP, by='ID') %>% 
   select(-ID, -Longitude, -Latitude,-Coord_X, -Coord_Y) -> conditionsDF
+
+#--------------------------------------------------------------------------
+
 
 #--------------------------------------------------------------------------
 accidentsDF %<>%
@@ -67,19 +72,37 @@ accidentsDF %<>%
   select(-Weather, -`WeatherOther or Unknown`) 
 #-----------------------------------------------------------------
 
-accidentsDF.cluster <- accidentsDF %>%
+# for data per cluster / group by clusters then fill empty days
+empty.days <- function(DF){
+  cluster_id = DF$cluster_id[1]
+  DF = pad(DF,start_val = as.Date("2012-01-01"),end_val = as.Date("2020-12-31"),
+       interval = 'day')
+  DF$cluster_id = cluster_id
+  return(DF)
+}
+
+accidentsDF %>%
+  group_by(Date, cluster_id) %>%
+  summarise(NB_Accidents = n(), across(everything(), sum)) %>%
+  arrange(cluster_id, Date) %>%
+  group_by(cluster_id) %>%
+  do(empty.days(.)) %>%
+  replace(is.na(.), 0) %>%
+  left_join(weatherDF, by='Date') %T>%
+  write.csv('../data/created/timeseries/ts_accidents_by_date_cluster.csv',
+            row.names = F) ->
+  accidentsDF.c
+
+#----------------------------------------------------------------
+# for data per day only (clusters are factored)
+accidentsDF.d <- accidentsDF %>%
+  left_join(weatherDF, by='Date') %>%
   mutate(cluster_id_ = as.factor(cluster_id)) %>%
   cbind(with(., model.matrix(~ cluster_id_ + 0))) %>%
   select(- cluster_id, -cluster_id_) %>% 
   group_by(Date) %>%
   summarise(NB_Accidents = n(), across(everything(), sum)) %T>%
   write.csv('../data/created/timeseries/ts_accidents_by_date.csv',
-            row.names = F)
-
-accidentsDF %>%
-  group_by(Date, cluster_id) %>%
-  summarise(NB_Accidents = n(), across(everything(), sum)) %>% 
-  write.csv('../data/created/timeseries/ts_accidents_by_date_cluster.csv',
             row.names = F)
 #----------------------------------------------------------------------
 conditionsDF %>%

@@ -24,8 +24,8 @@ accidentsDF %<>%
  
 accidentsDF %>%
   select(-NB_Accidents) %T>%
-  write.csv('../data/created/timeseries/decomp/predictors_all.csv',row.names = F)->
-  select(-Date) %>%
+  write.csv('../data/created/timeseries/decomp/predictors_all.csv',row.names = F) %>%
+  select(-Date) ->
   predictors
 accidentsDF %<>%
   select(Date, NB_Accidents)
@@ -37,10 +37,12 @@ results <- accidentsDF$NB_Accidents %>%
        seasonal.periods = c(28,362:366) ) %>%
   mstl(iterate = 100) %T>%
   autoplot() 
+  
 
 
 results %>%
   as.data.frame() %T>%
+  model.check() %T>%
   write.csv('../data/created/timeseries/decomp/decomp_all.csv',row.names = F) %>%
   select(Remainder) %T>%
   write.csv('../data/created/timeseries/decomp/residu_all.csv',row.names=F) ->
@@ -55,87 +57,86 @@ Box.test(residuals.mstl, lag=1, type='Ljung')
 Box.test(residuals.mstl, lag=10)
 max(0, 1 - var(residuals.mstl)/(var(residuals.mstl+results[2,])))
 for (i in 3:8){
-  print(max(0, 1 - var(residuals.mstl)/(var(residuals.mstl+results[i,]))))
+  print(max(0, 1 - var(residuals.mstl)/(var(residuals.mstl[,1]+results[,i]))))
   
 }
 
-results %>% forecast(method= 'naive',model=mstl) %T>% autoplot %>% View
+results %>% forecast(method= 'naive',model='stlm') %T>% autoplot %>% View
 ols_test_normality(residuals.mstl)
-#-------------------
+#----------------------------------------------------------------------------
 #-----------------
 
-arima1 = auto.arima(residuals.mstl)
-summary(arima1)
+accidentsDF.cluster <- read.csv('../data/created/timeseries/ts_accidents_by_date_cluster.csv',
+                        header = TRUE) %>%
+  select(-starts_with('NB'), -starts_with('as.factor.Accident'),
+       NB_Accidents) %>%
+  mutate(Date = as.Date(Date))
 
-results[1:30,] %>% View
-
-#d %<>% as_period('week')
-
-dts.w = ts(accidentsDF.weekly$NB_Accidents, start=c(2012,1),
-         end = c(2020,53), frequency = 53)
-dts.d = ts(accidentsDF$NB_Accidents, start=c(2012,1),
-          end = c(2020, 365), frequency = 365)
-# 
-# d %>% as.data.frame() %>%
-#   mutate(y = year(Date)) %>%
-#   count(y) 
-#   summarise(c = count)
-
-#accidentsDF %>%
-#  mutate(YMD=paste0(year(Date),'-',sprintf("%02d",month(Date)),'-01')) %>% 
-#  mutate(YMD = as.Date(YYM, format='%Y-%m-%d')) %>%
-#  arrange(year(Date),month(Date)) %>%
-#  group_by(YYM) %>%
-#  summarise(count = sum(NB_Accidents)) -> ts.data
-# Define time series
-#dts = ts(accidentsDF$NB_Accidents, start = c(2012,1),
- #          frequency=365)
-
-
-# dts %>% 
-#   stl(s.window='periodic') %>%
-#   seasadj() -> acci.adj
-# autoplot(acci.adj)
-# fit = stl(dts, s.window = "period");fit$weights
-# plot(fit)
-# monthplot(dts)
-# seasonplot(dts)
-
-
-fit <- auto.arima(dts.d, stepwise = T,seasonal = F,
-                  #xreg = fourier(dts.d, K=8),
-                  parallel = TRUE);fit;checkresiduals(fit)
-plot(fit)
+  
+accidentsDF.cluster %>%
+  group_by(cluster_id) %>% 
+  select(-NB_Accidents) %T>%
+  group_walk(~ write.csv(.x,paste0('../data/created/timeseries/decomp/predictors_',
+  .y$cluster_id,'.csv'),row.names = F)) %>%
+  select(-Date) ->
+  predictors.cluster
 
 
 
-fit.w <- auto.arima(dts.w, stepwise = F,trace = F,
-                  parallel = TRUE);fit.w;checkresiduals(fit.w)
-plot(fit.w)
-plot(forecast(fit.w,h=20))
-residuals(fit) %>% autoplot()
-checkresiduals(fit)
-Pacf(residuals(fit.w))
-fit.tb = tbats(dts.w); summary(fit.tb)
-
-fit.tb
-
-dts %>% diff(lag=52) %>% ggtsdisplay()
-#----------------------
-# timeseries plot
+accidentsDF.cluster %<>%
+  select(Date, NB_Accidents, cluster_id)
 
 
-library(corrr)
+apply.mstl <- function(d){
+    d %<>%
+    msts(start=c(2012,1), ts.frequency = 365.3333, 
+       seasonal.periods = c(28,362:366) ) %>%
+    mstl(iterate = 100)
+    plot(d) 
+    return(as.data.frame(d))
+}
+results.clusters <- accidentsDF.cluster %>%
+  group_by(cluster_id) %>%
+  do(apply.mstl(.$NB_Accidents))
 
+model.check <- function(decomp){
+  
+  avS = c()
+  for (i in 4:9){
+    avS = c(avS,max(0, 1 - var(decomp$Remainder)/(var(decomp$Remainder+decomp[,i]))))
+    
+  }
+  avS = round(mean(avS),3)
+  
+  cat(paste0('\n-----------------------------------------------------------------',
+          "\nCluster number ", decomp$cluster_id[1],
+          "\nVar(R)=",round(var(decomp$Remainder),3),
+         "\tMean(R)=", round(mean(decomp$Remainder),3),
+         "\t CV=", round(sd(decomp$Remainder)/mean(decomp$Remainder),3),
+         '\nLjung p-value=',
+         round((Box.test(decomp$Remainder, lag=1, type='Ljung'))$p.value,3),
+         '\nVariability explained = ',
+         round(1 - (var(decomp$Remainder)/var(accidentsDF.cluster$NB_Accidents)),3),
+         '\nTrend importance: ',
+        round(max(0, 1 - var(decomp$Remainder)/(var(decomp$Remainder+decomp$Trend))),3),
+        '\t mean seasonality importance: ', avS,
+        '\n-----------------------------------------------------------------'
+  ))
+    
+  write.csv(decomp, 
+            paste0('../data/created/timeseries/decomp/decomp_',
+            decomp$cluster_id[1],'.csv'),row.names = F)
+    write.csv(decomp$Remainder, 
+                paste0('../data/created/timeseries/decomp/residu_',
+                       decomp$cluster_id[1],'.csv'),row.names = F)
+  return (data.frame(0))
+}
 
+#decomp=as.data.frame(results) 
 
-
-cor.mat = correlate(regressors, diagonal = .2)
-cor.mat  %>% shave %>%
-  gather(-term, key = "colname", value = "cor") %>%
-  filter(abs(cor) > 0.8) %>% View
-
-
-
-
+results.clusters %>% 
+  as.data.frame %>%
+  arrange(cluster_id) %>%
+  group_by(cluster_id) %>% 
+  do(model.check(.)) 
 
