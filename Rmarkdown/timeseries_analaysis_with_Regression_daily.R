@@ -23,8 +23,9 @@ accidentsDF %<>%
   mutate(Date = as.Date(Date)) 
  
 accidentsDF %>%
-  select(-Date, -NB_Accidents) %T>%
+  select(-NB_Accidents) %T>%
   write.csv('../data/created/timeseries/decomp/predictors_all.csv',row.names = F)->
+  select(-Date) %>%
   predictors
 accidentsDF %<>%
   select(Date, NB_Accidents)
@@ -52,7 +53,13 @@ pacf(residuals.mstl)
 1 - (var(residuals.mstl)/var(accidentsDF$NB_Accidents))
 Box.test(residuals.mstl, lag=1, type='Ljung')
 Box.test(residuals.mstl, lag=10)
-results %>% forecast(method= 'naive',model=mstl) %>% autoplot
+max(0, 1 - var(residuals.mstl)/(var(residuals.mstl+results[2,])))
+for (i in 3:8){
+  print(max(0, 1 - var(residuals.mstl)/(var(residuals.mstl+results[i,]))))
+  
+}
+
+results %>% forecast(method= 'naive',model=mstl) %T>% autoplot %>% View
 ols_test_normality(residuals.mstl)
 #-------------------
 #-----------------
