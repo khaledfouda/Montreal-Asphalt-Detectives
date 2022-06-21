@@ -14,6 +14,7 @@ library(magrittr)
 library(tibbletime)
 library(forecast)
 library(caret)
+library(glmnet)
 # Transfer data into weekly
 accidentsDF %<>% 
   select(-starts_with('cluster'),
@@ -72,30 +73,60 @@ data.l$Y = residuals(model_ts)
 
 # dividing data to train, test
 set.seed(100)
-#data.l %<>% as.data.frame()
 index = sample(1:nrow(data.l), .7*nrow(data.l))
 train.l = data.l[index,]
 test.l = data.l[-index,]
-
-
-#index = sample(1:length(Y), .7*length(Y))
-#X_train = data.l[index,]
-#X_test = data.l[-index,]
-#Y_train = Y[index]
-#Y_test = Y[-index]
 # scaling:
 pre.proc.X = preProcess(data.l,
                         method = c("center", 'scale'))
 train.l = predict(pre.proc.X, train.l)
 test.l = predict(pre.proc.X, test.l)
-# pre.proc.Y = preProcess(as.matrix(Y), method = c('center', 'scale'))
-# Y_train = predict(pre.proc.Y, Y_train)
-# Y_test = predict(pre.proc.Y, Y_test)
 summary(train.l)
+# linear regression model
 lr = lm(Y ~ ., data=train.l)
 summary(lr)
 sqrt(mean(lr$residuals^2))
-RMSE(predict(lr, test.l[,-49], test.l[['Y']]))
+RMSE(predict(lr, test.l[,-49]), test.l[['Y']])
+# Regularization
+dummies <- dummyVars(Y ~ ., data.l)
+train_dummies <- predict(dummies, train.l)
+test_dummies <- predict(dummies, test.l)
+# Ridge regression
+X = as.matrix(train_dummies)
+y_train = train.l$Y
+
+x_test = as.matrix(test_dummies)
+y_test = test.l$Y
+
+lambdas <- 10^seq(2,-3, -.1)
+ridge_reg = glmnet(X, y_train, nlambda=25, alpha=0, family='gaussian',
+                   lambda=lambdas)
+summary(ridge_reg)
+opt.lmbd <- cv.glmnet(X, y_train, alpha=0, lambda = lambdas)$lambda.min
+RMSE(predict(ridge_reg, s=opt.lmbd, newx = X), Y_train)
+RMSE(predict(ridge_reg, s=opt.lmbd, newx = x_test), Y_test)
+var(Y_train - predict(ridge_reg, s=opt.lmbd, newx = X))
+var(Y_test - predict(ridge_reg, s=opt.lmbd, newx = x_test))
+#-------------
+# LASSO
+opt.lmbd.lasso = cv.glmnet(X, y_train, alpha=1, lambda=lambdas,
+                           standardize=TRUE, nfolds=5)$lambda.min
+lasso.model <- glmnet(X, y_train, alpha=1, lambda=opt.lmbd.lasso,
+                      standardize = T)
+RMSE(predict(lasso.model, s=opt.lmbd.lasso, newx = X), Y_train)
+RMSE(predict(lasso.model, s=opt.lmbd.lasso, newx = x_test), Y_test)
+#---------------------------------
+# lr after regularization
+lr.train = as.data.frame(X)
+lr.train$Y = y_train
+lr = lm(Y ~ ., lr.train)
+RMSE(predict(lr, newx = lr.train), y_train)
+RMSE(predict(lr, newdata = as.data.frame(x_test)), y_test)
+
+summary(lr)
+
+
+
 
 
 
