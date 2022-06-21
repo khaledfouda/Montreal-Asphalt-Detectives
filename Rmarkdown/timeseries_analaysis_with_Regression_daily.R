@@ -23,7 +23,9 @@ accidentsDF %<>%
   mutate(Date = as.Date(Date)) 
  
 accidentsDF %>%
-  select(-Date, -NB_Accidents)  -> predictors
+  select(-Date, -NB_Accidents) %T>%
+  write.csv('../data/created/timeseries/decomp/predictors_all.csv',row.names = F)->
+  predictors
 accidentsDF %<>%
   select(Date, NB_Accidents)
 
@@ -43,7 +45,6 @@ results %>%
   write.csv('../data/created/timeseries/decomp/residu_all.csv',row.names=F) ->
   residuals.mstl
 #---------------------------------------------
-residuals.mstl = results[,ncol(results)]
 var(residuals.mstl)
 mean(residuals.mstl)
 range(residuals.mstl)
