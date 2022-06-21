@@ -16,6 +16,37 @@ library(forecast)
 library(caret)
 library(glmnet)
 # Transfer data into weekly
+Y = read.csv('../data/created/timeseries/decomp/residu_all.csv')
+X = read.csv('../data/created/timeseries/decomp/predictors_all.csv') %>%
+  select(-Date)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+#######
+#######################
+#######################################
 accidentsDF %<>% 
   select(-starts_with('cluster'),
          -starts_with('NB'), -starts_with('as.factor.Accident'),

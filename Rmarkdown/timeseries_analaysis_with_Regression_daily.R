@@ -102,8 +102,8 @@ for (i in 3:8){
   
 }
 
-results %>% forecast(method= 'naive',model='stlm') %T>% autoplot %>% View
-ols_test_normality(residuals.mstl)
+#results %>% forecast(method= 'naive',model='stlm') %T>% autoplot %>% View
+#ols_test_normality(residuals.mstl)
 #----------------------------------------------------------------------------
 #-----------------
 

@@ -96,12 +96,12 @@ accidentsDF %>%
 #----------------------------------------------------------------
 # for data per day only (clusters are factored)
 accidentsDF.d <- accidentsDF %>%
-  left_join(weatherDF, by='Date') %>%
   mutate(cluster_id_ = as.factor(cluster_id)) %>%
   cbind(with(., model.matrix(~ cluster_id_ + 0))) %>%
   select(- cluster_id, -cluster_id_) %>% 
   group_by(Date) %>%
-  summarise(NB_Accidents = n(), across(everything(), sum)) %T>%
+  summarise(NB_Accidents = n(), across(everything(), sum)) %>%
+  left_join(weatherDF, by='Date') %T>% 
   write.csv('../data/created/timeseries/ts_accidents_by_date.csv',
             row.names = F)
 #----------------------------------------------------------------------
