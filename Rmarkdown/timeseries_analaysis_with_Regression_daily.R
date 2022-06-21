@@ -39,7 +39,48 @@ results <- accidentsDF$NB_Accidents %>%
   autoplot() 
   
 
+apply.mstl <- function(d){
+  d %<>%
+    msts(start=c(2012,1), ts.frequency = 365.3333, 
+         seasonal.periods = c(28,362:366) ) %>%
+    mstl(iterate = 100)
+  plot(d) 
+  return(as.data.frame(d))
+}
+model.check <- function(decomp){
+  
+  avS = c()
+  for (i in 4:9){
+    avS = c(avS,max(0, 1 - var(decomp$Remainder)/(var(decomp$Remainder+decomp[,i]))))
+    
+  }
+  avS = round(mean(avS),3)
+  
+  cat(paste0('\n-----------------------------------------------------------------',
+             "\nCluster number ", decomp$cluster_id[1],
+             "\nVar(R)=",round(var(decomp$Remainder),3),
+             "\tMean(R)=", round(mean(decomp$Remainder),3),
+             "\t CV=", round(sd(decomp$Remainder)/mean(decomp$Remainder),3),
+             '\nLjung p-value=',
+             round((Box.test(decomp$Remainder, lag=1, type='Ljung'))$p.value,3),
+             '\nVariability explained = ',
+             round(1 - (var(decomp$Remainder)/var(decomp$Data)),3),
+             '\nTrend importance: ',
+             round(max(0, 1 - var(decomp$Remainder)/(var(decomp$Remainder+decomp$Trend))),3),
+             '\t mean seasonality importance: ', avS,
+             '\n-----------------------------------------------------------------'
+  ))
+  
+  write.csv(decomp, 
+            paste0('../data/created/timeseries/decomp/decomp_',
+                   decomp$cluster_id[1],'.csv'),row.names = F)
+  write.csv(decomp$Remainder, 
+            paste0('../data/created/timeseries/decomp/residu_',
+                   decomp$cluster_id[1],'.csv'),row.names = F)
+  return (data.frame(0))
+}
 
+#---------------------------------------------------------------------------
 results %>%
   as.data.frame() %T>%
   model.check() %T>%
@@ -87,50 +128,9 @@ accidentsDF.cluster %<>%
   select(Date, NB_Accidents, cluster_id)
 
 
-apply.mstl <- function(d){
-    d %<>%
-    msts(start=c(2012,1), ts.frequency = 365.3333, 
-       seasonal.periods = c(28,362:366) ) %>%
-    mstl(iterate = 100)
-    plot(d) 
-    return(as.data.frame(d))
-}
 results.clusters <- accidentsDF.cluster %>%
   group_by(cluster_id) %>%
   do(apply.mstl(.$NB_Accidents))
-
-model.check <- function(decomp){
-  
-  avS = c()
-  for (i in 4:9){
-    avS = c(avS,max(0, 1 - var(decomp$Remainder)/(var(decomp$Remainder+decomp[,i]))))
-    
-  }
-  avS = round(mean(avS),3)
-  
-  cat(paste0('\n-----------------------------------------------------------------',
-          "\nCluster number ", decomp$cluster_id[1],
-          "\nVar(R)=",round(var(decomp$Remainder),3),
-         "\tMean(R)=", round(mean(decomp$Remainder),3),
-         "\t CV=", round(sd(decomp$Remainder)/mean(decomp$Remainder),3),
-         '\nLjung p-value=',
-         round((Box.test(decomp$Remainder, lag=1, type='Ljung'))$p.value,3),
-         '\nVariability explained = ',
-         round(1 - (var(decomp$Remainder)/var(accidentsDF.cluster$NB_Accidents)),3),
-         '\nTrend importance: ',
-        round(max(0, 1 - var(decomp$Remainder)/(var(decomp$Remainder+decomp$Trend))),3),
-        '\t mean seasonality importance: ', avS,
-        '\n-----------------------------------------------------------------'
-  ))
-    
-  write.csv(decomp, 
-            paste0('../data/created/timeseries/decomp/decomp_',
-            decomp$cluster_id[1],'.csv'),row.names = F)
-    write.csv(decomp$Remainder, 
-                paste0('../data/created/timeseries/decomp/residu_',
-                       decomp$cluster_id[1],'.csv'),row.names = F)
-  return (data.frame(0))
-}
 
 #decomp=as.data.frame(results) 
 
