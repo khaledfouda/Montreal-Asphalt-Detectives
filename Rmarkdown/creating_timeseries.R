@@ -13,15 +13,23 @@ library(knitr)
 accidentsDF <- read.csv('../data/created/Road_Accidents_clean.csv')
 countsDF <- read.csv('../data/created/counts_cars_pedast_cyclists_2017_2020.csv')
 conditionsDF <- read.csv('../data/created/Road_conditions_2019_clean_coordinates_fixed.csv')
-LOC.MAP <- read.csv('../data/created/Location_mapper_all_random.csv')
-weatherDF <- read.csv('../data/created/Weather_features.csv')
-clusters <- read.csv('../data/created/cluster_id.csv')
+LOC.MAP <- read.csv('../data/created/Location_mapper.csv')
+
+weatherDF <- read.csv('../data/created/weather_no_nas.csv') %>%
+  rename(Date=date) %>%
+  select(-num_accidents)
+
+clusters <- read.csv('../data/created/cluster_id.csv') %>%
+  select(-Longitude, -Latitude)
+
 #------------------------------------------------------------------------
 LOC.MAP %>% 
-  select(ID, Cluster) -> LOC.MAP
+  select(ID, cluster_id) -> LOC.MAP
+
 accidentsDF %<>%
-  left_join(clusters, by=c('Longitude', 'Latitude')) %>% 
-  select(-X, -Longitude, -Latitude)  
+  left_join(clusters, by='ID') %>% 
+  left_join(weatherDF, by='Date') %>%
+  select(-ID, -Longitude, -Latitude)  
 
 countsDF %>%
   left_join(LOC.MAP, by='ID') %>% 
@@ -31,10 +39,8 @@ conditionsDF %>%
   left_join(LOC.MAP, by='ID') %>% 
   select(-ID, -Longitude, -Latitude,-Coord_X, -Coord_Y) -> conditionsDF
 
-weatherDF %>%
-  filter(is.na(Temp))
 #--------------------------------------------------------------------------
-accidentsDF %>%
+accidentsDF %<>%
   # 1. Severity
   cbind(with(accidentsDF,model.matrix(~ Severity + 0))) %>%
   select(-Severity) %>%
@@ -58,20 +64,21 @@ accidentsDF %>%
   select(-Environment, -`EnvironmentOther or Unknown`) %>%
   # 7. Weather
   cbind(with(accidentsDF,model.matrix(~ Weather + 0))) %>%
-  select(-Weather, -`WeatherOther or Unknown`) -> accidentsDF
+  select(-Weather, -`WeatherOther or Unknown`) 
 #-----------------------------------------------------------------
+
 accidentsDF.cluster <- accidentsDF %>%
-  mutate(Cluster_ = as.factor(Cluster)) %>%
-  cbind(with(., model.matrix(~ Cluster_ + 0))) %>%
-  select(- Cluster, -Cluster_) %>% 
+  mutate(cluster_id_ = as.factor(cluster_id)) %>%
+  cbind(with(., model.matrix(~ cluster_id_ + 0))) %>%
+  select(- cluster_id, -cluster_id_) %>% 
   group_by(Date) %>%
   summarise(NB_Accidents = n(), across(everything(), sum)) %T>%
   write.csv('../data/created/timeseries/ts_accidents_by_date.csv',
             row.names = F)
 
 accidentsDF %>%
-  group_by(Date, Cluster) %>%
-  summarise(NB_Accidents = n(), across(everything(), sum)) %>% View
+  group_by(Date, cluster_id) %>%
+  summarise(NB_Accidents = n(), across(everything(), sum)) %>% 
   write.csv('../data/created/timeseries/ts_accidents_by_date_cluster.csv',
             row.names = F)
 #----------------------------------------------------------------------
@@ -97,7 +104,7 @@ conditionsDF %>%
   rename(Surface_type_ = Surface_type) %>%
   cbind(with(., model.matrix(~ Surface_type_ + 0))) %>%
   select(-Surface_type_, -Surface_type_None) %>% 
-  group_by(Cluster) %>%
+  group_by(cluster_id) %>%
   summarise(NB_Obs = n(), across(everything(), sum)) -> conditionsDF
 #---------------------------------------------------------------------  
 write.csv(conditionsDF, '../data/created/timeseries/ts_conditions_by_cluster.csv',
@@ -107,16 +114,16 @@ countsDF %>%
   select(-Id_Intersection, -Intersection_1, -Intersection_2) -> countsDF
 #---------------------------------------------------------------------
 countsDF %>%
-  mutate(Cluster_ = as.factor(Cluster)) %>%
-  cbind(with(., model.matrix(~ Cluster_ + 0))) %>%
-  select(- Cluster, -Cluster_) %>% 
+  mutate(cluster_id_ = as.factor(cluster_id)) %>%
+  cbind(with(., model.matrix(~ cluster_id_ + 0))) %>%
+  select(- cluster_id, -cluster_id_) %>% 
   group_by(Date) %>%
   summarise(NB_Accidents = n(), across(everything(), sum)) %>%
   write.csv('../data/created/timeseries/ts_counts_by_date.csv',
             row.names = F)
 
 countsDF %>%
-  group_by(Date, Cluster) %>%
+  group_by(Date, cluster_id) %>%
   summarise(NB_Accidents = n(), across(everything(), sum)) %>%
   write.csv('../data/created/timeseries/ts_counts_by_date_cluster.csv',
             row.names = F)

@@ -30,35 +30,36 @@ accidentsDF %<>%
 
 
 results <- accidentsDF$NB_Accidents %>% 
-  msts(start=c(2012,1), ts.frequency = 365, 
-       seasonal.periods = c(26:31) ) %>%
-  mstl(iterate = 10) %T>%
-  plot() 
+  msts(start=c(2012,1), ts.frequency = 365.3333, 
+       seasonal.periods = c(28,362:366) ) %>%
+  mstl(iterate = 100) %T>%
+  autoplot() 
 
+
+results %>%
+  as.data.frame() %T>%
+  write.csv('../data/created/timeseries/decomp/decomp_all.csv',row.names = F) %>%
+  select(Remainder) %T>%
+  write.csv('../data/created/timeseries/decomp/residu_all.csv',row.names=F) ->
+  residuals.mstl
+#---------------------------------------------
 residuals.mstl = results[,ncol(results)]
 var(residuals.mstl)
 mean(residuals.mstl)
+range(residuals.mstl)
 pacf(residuals.mstl)
+1 - (var(residuals.mstl)/var(accidentsDF$NB_Accidents))
 Box.test(residuals.mstl, lag=1, type='Ljung')
 Box.test(residuals.mstl, lag=10)
-results %>% forecast(method= 'naive') %>% autoplot
+results %>% forecast(method= 'naive',model=mstl) %>% autoplot
 ols_test_normality(residuals.mstl)
-
-day(as.Date(accidentsDF[[15,1]]))
-
-
 #-------------------
-accidentsDF$NB_Accidents %>% 
-  msts( c(26:31) ) -> msts.d
-ts_ = ts(accidentsDF$NB_Accidents, frequency = 1)
-
-fit = auto.arima(ts_, seasonal=F, xreg=fourier(msts.d,K=c(3,3,3,3,3,3)))
 #-----------------
 
 arima1 = auto.arima(residuals.mstl)
 summary(arima1)
 
-
+results[1:30,] %>% View
 
 #d %<>% as_period('week')
 
