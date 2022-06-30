@@ -1,0 +1,103 @@
+import pandas as pd 
+import matplotlib.pyplot as plt
+from sklearn.preprocessing import MinMaxScaler
+from sklearn.preprocessing import StandardScaler
+from keras.models import Sequential
+from keras.layers import Dense, Dropout
+from keras.layers import LSTM
+import seaborn as sns
+from matplotlib import pyplot as plt
+import numpy as np 
+
+
+dataset = pd.read_csv('aggregate_data.csv')  ### I upload it already 
+
+train_dates = pd.to_datetime(dataset['Date'])
+
+
+### variabless for training 
+### LSTM multivariate analysis hence we are using 56 features
+
+cols = list(dataset)[1:58]
+dataset_trains = dataset[cols].astype(float)
+dataset_trains
+
+
+#LSTM use sigmoid and tanh that are sensitive to magnitude so values need to be normalized 
+#Hence we use scaler here
+scaler = StandardScaler()
+
+scaler = scaler.fit(dataset_trains)
+
+dataset_trains_scaled = scaler.transform(dataset_trains)
+
+
+trainX=[]
+trainY=[]
+
+n_future = 1  ### number of days we want to predict into the future 
+n_past = 28  ### number of past days we want to use to predict the future, AKA lags 
+
+for i in range(n_past, len(dataset_trains_scaled) - n_future +1):
+    trainX.append(dataset_trains_scaled[i - n_past:i, 0:dataset_trains.shape[1]])
+    trainY.append(dataset_trains_scaled[i + n_future - 1: i + n_future, 0 ])
+    
+trainX, trainY = np.array(trainX), np.array(trainY)
+
+print('trainX shape == {}.'.format(trainX.shape))
+print('trainY shape == {}.'.format(trainY.shape))
+
+model = Sequential()
+### 1st layer
+model.add(LSTM(366, activation = 'relu',input_shape=(trainX.shape[1], trainX.shape[2]), return_sequences=True))
+### 2nd layer
+model.add(LSTM(365, activation = 'relu',input_shape=(trainX.shape[1], trainX.shape[2]), return_sequences=True))
+### 3nd layer 
+model.add(LSTM(128, activation = 'relu',input_shape=(trainX.shape[1], trainX.shape[2]), return_sequences=True))
+### 4th layer
+model.add(LSTM(64, activation = 'relu',input_shape=(trainX.shape[1], trainX.shape[2]), return_sequences=True))
+### 5h layer
+model.add(LSTM(32, activation = 'relu',return_sequences=False))
+
+### noting thata LSTM uses Hyperbolic tangent as activation function as default but I changed it recitifed linear function
+
+model.add(Dense(1))
+
+
+model.compile(optimizer='adam', loss='mse')
+model.summary()
+
+# fit the model
+history = model.fit(trainX, trainY, epochs=10, batch_size=32, validation_split=0.2, verbose=1) 
+
+
+plt.plot(history.history['loss'], label='Training loss')
+plt.plot(history.history['val_loss'], label='Validation loss')
+plt.legend()
+
+prediction = model.predict(trainX) #shape = (n, 1)
+prediction_copies = np.repeat(prediction, dataset_trains.shape[1], axis=-1)
+
+y_pred_future = scaler.inverse_transform(prediction_copies)[:,0]
+
+
+y_num = dataset['num_accidents'].loc[0:n_past-1].tolist()
+
+for i in range(0,len(y_pred_future)):
+    y_num.append(y_pred_future[i])
+    
+y_actual = dataset['num_accidents'].tolist()
+
+mse = np.square(np.subtract(y_actual,y_num)).mean()
+
+
+
+plt.figure(figsize=(12,9))
+plt.plot(y_actual,'red',label ='Number of Car Accidents from 2012-2019')
+plt.plot(y_pred_future,'blue', label = 'Predicted Number of Car Accidents for 2012-2019')
+plt.title('Montreal Car Accidents Forecasting')
+plt.xlabel('days')
+plt.ylabel('Number of Accidents')
+plt.legend()
+plt.show()
+
